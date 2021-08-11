@@ -29,6 +29,17 @@ namespace AspNetCoreGitHubAuth
         {
             services.AddMvc(options => options.EnableEndpointRouting = false);
 
+            //support older browser. only if client on https
+            services.Configure<CookiePolicyOptions>(options =>
+            {
+                options.MinimumSameSitePolicy = SameSiteMode.Unspecified;
+                options.OnAppendCookie = cookieContext =>
+                    CheckSameSite(cookieContext.Context, cookieContext.CookieOptions);
+                options.OnDeleteCookie = cookieContext =>
+                    CheckSameSite(cookieContext.Context, cookieContext.CookieOptions);
+            });
+
+
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -109,6 +120,7 @@ namespace AspNetCoreGitHubAuth
             app.UseStaticFiles();
 
             app.UseAuthentication();
+            app.UseCookiePolicy();
 
             app.UseMvc(routes =>
             {
@@ -117,5 +129,15 @@ namespace AspNetCoreGitHubAuth
                     template: "{controller}/{action=Index}/{id?}");
             });
         }
+
+        private void CheckSameSite(HttpContext httpContext, CookieOptions options)
+        {
+            if (options.SameSite == SameSiteMode.None)
+            {
+                var userAgent = httpContext.Request.Headers["User-Agent"].ToString();
+                options.SameSite = SameSiteMode.Unspecified;
+            }
+        }
+
     }
 }
